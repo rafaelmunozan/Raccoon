@@ -1,0 +1,40 @@
+{
+  "manifest_version": 2,
+  "name": "Raccoon",
+  "version": "0.01",
+  "description": "Temporary Email Service",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "https://www.1secmail.com/"
+  ],
+  "background": {
+    "scripts": [
+      "src/js/background.js"
+    ],
+    "persistent": false
+  },
+  "browser_action": {
+    "default_icon": {
+      "16": "/src/img/icon/icon16.png",
+      "48": "/src/img/icon/icon48.png",
+      "128": "/src/img/icon/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "/src/img/icon/icon16.png",
+    "48": "/src/img/icon/icon48.png",
+    "128": "/src/img/icon/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/js/content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    "index.html",
+    "src/css/style.css",
+    "src/js/main.js"
+  ]
+}
