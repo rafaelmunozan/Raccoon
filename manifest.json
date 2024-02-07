@@ -1,20 +1,19 @@
 {
-  "manifest_version": 2,
-  "name": "Raccoon",
+  "manifest_version": 3,
+  "name": "Raccoon: Temporary Disposable Emails.",
   "version": "0.01",
-  "description": "Temporary Email Service",
+  "description": "Protect your email, and personal data with Raccoon.",
   "permissions": [
-    "activeTab",
     "storage",
-    "https://www.1secmail.com/"
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://www.1secmail.com/*"
   ],
   "background": {
-    "scripts": [
-      "src/js/background.js"
-    ],
-    "persistent": false
+    "service_worker": "src/js/background.js"
   },
-  "browser_action": {
+  "action": {
     "default_icon": {
       "16": "/src/img/icon/icon16.png",
       "48": "/src/img/icon/icon48.png",
@@ -33,8 +32,9 @@
     }
   ],
   "web_accessible_resources": [
-    "index.html",
-    "src/css/style.css",
-    "src/js/main.js"
+    {
+      "resources": ["index.html", "src/css/style.css", "src/js/main.js"],
+      "matches": ["<all_urls>"]
+    }
   ]
 }

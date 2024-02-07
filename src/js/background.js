@@ -1,1 +1,1 @@
-chrome.browserAction.onClicked.addListener(function(tab) {chrome.tabs.sendMessage(tab.id, { action: "toggleIframe" });});
+try{self.addEventListener("install",()=>{self.skipWaiting()}),self.addEventListener("activate",e=>{e.waitUntil(self.clients.claim())}),chrome.action.onClicked.addListener(e=>{chrome.tabs.sendMessage(e.id,{action:"toggleIframe"})})}catch(e){console.error(`Error in background service worker: ${e}`)}
