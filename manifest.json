@@ -1,8 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Raccoon",
+  "name": "Raccoon - Temporary email addresses",
   "version": "0.02",
-  "description": "Temporary email addresses",
   "permissions": [
     "activeTab"
   ],
