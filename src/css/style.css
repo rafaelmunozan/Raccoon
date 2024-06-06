@@ -1,0 +1,95 @@
+@font-face {
+  font-family: 'Inter'; /* Your chosen font name */
+  src: url('inter.ttf') format('truetype');  /* TTF for older browsers */
+}
+
+body {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  height: fit-content;
+  margin: 0;
+  overflow: hidden;
+}
+.container {
+  width: 100%;
+  padding: 18px 18px 16px 18px;
+  font-family: Arial, sans-serif;
+}
+.inbox {
+  overflow-y: auto;
+  margin-bottom: 20px;
+  min-height: 70px;
+}
+.inbox-item {
+  color: #686868cc;
+  font-size: 12px;
+  margin: 0px 0px 7px 0px;
+  font-family: "Inter", sans-serif;
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+  cursor: pointer;
+  transition-duration: 0.3s;
+}
+.inbox-item:hover {
+  color: #505050e8;
+}
+.action-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.address {
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  -webkit-font-smoothing: antialiased;
+  cursor: pointer;
+  transition-duration: 0.3s;
+  color: #343434;
+}
+.address:hover {
+  color: #505050e8;
+}
+.refresh-icon {
+  cursor: pointer;
+  align-content: center;
+  height: 17px;
+  width: 17px;
+}
+
+@keyframes rotate {
+  from {
+      transform: rotate(360deg);
+  }
+  to {
+      transform: rotate(0deg);
+  }
+}
+
+.refresh-icon.rotate {
+  animation: rotate 0.2s ease-out;
+}
+
+/* For the iframe toggle animation */
+@keyframes fadeScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeScaleOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
