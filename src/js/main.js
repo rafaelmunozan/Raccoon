@@ -2,21 +2,100 @@
 
 const MailService = {
 
-    endpoint: 'https://www.1secmail.com/api/v1/',
+    endpoint: 'https://api.mail.tm', // Updated endpoint
 
     async genAddress() {
-        const [address] = await Request.data(`${this.endpoint}?action=genRandomMailbox`, {});
-        return address;
+        try {
+            // 1. Get domains
+            const domainsResponse = await Request.data(`${this.endpoint}/domains`, {
+                method: 'GET'
+            });
+            if (!domainsResponse || !domainsResponse['hydra:member'] || domainsResponse['hydra:member'].length === 0) {
+                throw new Error("Failed to fetch domains");
+            }
+            // Select a random domain
+            const domains = domainsResponse['hydra:member'];
+            const randomIndex = Math.floor(Math.random() * domains.length);
+            const domain = domains[randomIndex].domain;
+
+            // 2. Create Account
+            const username = Math.random().toString(36).substring(2, 15); // Generate random username
+            const password = Math.random().toString(36).substring(2, 15); // Generate random password (consider making this more robust/configurable)
+            const address = `${username}@${domain}`;
+
+            const accountResponse = await Request.data(`${this.endpoint}/accounts`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    address: address,
+                    password: password
+                })
+            });
+
+            if (!accountResponse) {
+                throw new Error("Failed to create account");
+            }
+
+            // 3. Get Token (for future authenticated requests - though not strictly needed for just returning address)
+            const tokenResponse = await Request.data(`${this.endpoint}/token`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    address: address,
+                    password: password
+                })
+            });
+
+            if (!tokenResponse || !tokenResponse.token) {
+                throw new Error("Failed to get token");
+            }
+
+
+            return { address: address, token: tokenResponse.token }; // Return address and token
+        } catch (error) {
+            console.error("Error generating address:", error);
+            return null; // Or handle error more gracefully
+        }
     },
 
-    async getInbox(email) {
-        const [username, domain] = email.split('@');
-        return await Request.data(`${this.endpoint}?action=getMessages&login=${username}&domain=${domain}`, {});
+    async getInbox(token) {
+        try {
+            const messagesResponse = await Request.data(`${this.endpoint}/messages`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}` // Include Bearer token
+                }
+            });
+            if (!messagesResponse || !messagesResponse['hydra:member']) {
+                throw new Error("Failed to fetch inbox");
+            }
+            return messagesResponse['hydra:member']; // Return array of messages
+        } catch (error) {
+            console.error("Error fetching inbox:", error);
+            return null; // Or handle error more gracefully
+        }
     },
 
-    async getMail(email, id) {
-        const [username, domain] = email.split('@');
-        return await Request.data(`${this.endpoint}?action=readMessage&login=${username}&domain=${domain}&id=${id}`, {});
+    async getMail(token, id) {
+        try {
+            const mailResponse = await Request.data(`${this.endpoint}/messages/${id}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}` // Include Bearer token
+                }
+            });
+            if (!mailResponse) {
+                throw new Error("Failed to fetch mail");
+            }
+            return mailResponse;
+        } catch (error) {
+            console.error("Error fetching mail:", error);
+            return null; // Or handle error more gracefully
+        }
     },
 
 };
@@ -36,7 +115,17 @@ const Request = {
 
                 clearTimeout(timeoutId);
 
-                if (!response.ok) throw new Error(response.status);
+                if (!response.ok) {
+                    let message = `HTTP error! status: ${response.status}`;
+                    try {
+                        const errorData = await response.json();
+                        message += `\nDetails: ${JSON.stringify(errorData)}`; // Include error details if available
+                    } catch (jsonError) {
+                        message += `\nCould not parse error JSON.`;
+                    }
+                    throw new Error(message);
+                }
+
 
                 return response.json();
 
@@ -44,6 +133,7 @@ const Request = {
                 if (retries === 0 || error.name === 'AbortError') throw error;
                 retries--;
                 await this.delay(1000);
+                console.warn(`Request to ${url} failed, retrying (${retries} retries left): ${error.message}`); // Log retry attempts
             }
         }
     },
@@ -64,8 +154,10 @@ const StorageManager = {
     },
 
     async create() {
+        const addressData = await MailService.genAddress(); // Now genAddress returns {address, token}
         const format = {
-            address: await MailService.genAddress() ?? ": /",
+            address: addressData?.address ?? ": /",
+            token: addressData?.token ?? null, // Store the token
             timestamp: new Date().getTime(),
             inbox: {}
         };
@@ -92,6 +184,10 @@ const StorageManager = {
 
     getAddress() {
         return this.get().address;
+    },
+
+    getToken() { // Add getToken function
+        return this.get().token;
     },
 
     setMail(data) {
@@ -140,7 +236,7 @@ const UIManager = {
         const mailComp = document.createElement('div');
         mailComp.classList.add('inbox-item');
 
-        if (mailData.read) mailComp.classList.add('read');
+        if (mailData.seen) mailComp.classList.add('read'); // Use 'seen' from mail.tm
 
         mailComp.textContent = mailData.subject;
         mailComp.setAttribute('mailid', mailData.id);
@@ -177,16 +273,43 @@ const UIManager = {
         const floatingTab = window.open('', '_blank', windowFeatures);
         floatingTab.document.open();
         floatingTab.document.write('<html><head><title>Email Content</title></head><body>');
-        floatingTab.document.write(mail.htmlBody ?? mail.textBody);
+        floatingTab.document.write(mail.html[0] ?? mail.text); // mail.tm uses mail.html (array) and mail.text
         floatingTab.document.close();
     },
 
     init() {
-        this.compInbox.addEventListener('click', (event) => {
+        this.compInbox.addEventListener('click', async (event) => { // Make event handler async
             const target = event.target.closest('.inbox-item');
             if (target) {
-                const mail = StorageManager.getMail(target.getAttribute('mailid'));
-                this.openMail(mail);
+                const mailId = target.getAttribute('mailid');
+                let mail = StorageManager.getMail(mailId);
+                if (!mail || !mail.html) { // Check if full mail content is loaded or needs refresh
+                    const token = StorageManager.getToken();
+                    if (token) {
+                        mail = await MailService.getMail(token, mailId); // Fetch full mail content if needed
+                        if (mail) {
+                            StorageManager.setMail({...mail, id: mailId}); // Update cache with full content
+                        }
+                    }
+                }
+                if (mail) {
+                    this.openMail(mail);
+                    if (!mail.seen) { // Mark as read if not already
+                        const token = StorageManager.getToken();
+                        if (token) {
+                            await Request.data(`${MailService.endpoint}/messages/${mailId}`, { // Mark as read
+                                method: 'PATCH',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/merge-patch+json' // Important content type for PATCH
+                                },
+                                body: JSON.stringify({ "seen": true })
+                            });
+                            target.classList.add('read'); // Update UI to show as read
+                            StorageManager.setMail({ id: mailId, seen: true }); // Update cache
+                        }
+                    }
+                }
             }
         });
     },
@@ -238,9 +361,9 @@ const Raccoon = {
 
             const data = StorageManager.get();
 
-            if (!data) return;
+            if (!data || !data.token) return; // Ensure we have token
 
-            const mails = await MailService.getInbox(data.address);
+            const mails = await MailService.getInbox(data.token);
 
             if (!mails || mails.length < 1) return;
 
@@ -248,16 +371,13 @@ const Raccoon = {
             const newMails = mails.filter(mail => !storedMails.hasOwnProperty(mail.id));
 
             for (let i = 0; i < newMails.length; i++) {
-                let mail = {
-                    ...(await MailService.getMail(data.address, newMails[i].id)),
-                    read: false
-                };
-                StorageManager.setMail(mail);
+                let mail = newMails[i]; // Basic message data from inbox
+                StorageManager.setMail(mail); // Store basic info
                 UIManager.setCompMail(mail);
             }
 
         } catch (error) {
-            // console.error('Error:', error);
+            // console.error('Error:', error); // Keep error logging minimal for background sync
         }
     },
 
