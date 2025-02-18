@@ -93,3 +93,21 @@ body {
     transform: scale(0.8);
   }
 }
+
+.button-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.close-icon {
+  cursor: pointer;
+  align-content: center;
+  height: 17px;
+  width: 17px;
+  transition: opacity 0.2s ease;
+}
+
+.close-icon:hover {
+  opacity: 0.7;
+}

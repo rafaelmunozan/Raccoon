@@ -278,7 +278,8 @@ const UIManager = {
     },
 
     init() {
-        this.compInbox.addEventListener('click', async (event) => { // Make event handler async
+        this.initCloseButton();
+        this.compInbox.addEventListener('click', async (event) => {
             const target = event.target.closest('.inbox-item');
             if (target) {
                 const mailId = target.getAttribute('mailid');
@@ -311,6 +312,21 @@ const UIManager = {
                     }
                 }
             }
+        });
+    },
+
+    initCloseButton() {
+        const closeButton = document.getElementById('close');
+        if (!closeButton) {
+            console.error('Close button not found');
+            return;
+        }
+        closeButton.addEventListener('click', () => {
+            // Send message to content script
+            window.parent.postMessage({
+                action: 'toggleIframe',
+                forceClose: true // Add this flag to force close
+            }, '*');
         });
     },
 };
