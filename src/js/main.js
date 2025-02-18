@@ -269,12 +269,12 @@ const UIManager = {
 
     // Opens an email in a new tab
     openMail(mail) {
-        const windowFeatures = 'width=300,height=500,toolbar=0,location=0,menubar=0';
-        const floatingTab = window.open('', '_blank', windowFeatures);
-        floatingTab.document.open();
-        floatingTab.document.write('<html><head><title>Email Content</title></head><body>');
-        floatingTab.document.write(mail.html[0] ?? mail.text); // mail.tm uses mail.html (array) and mail.text
-        floatingTab.document.close();
+        // Send message to content script to create email window
+        window.parent.postMessage({
+            action: 'openMailWindow',
+            content: mail.html[0] ?? mail.text,
+            subject: mail.subject
+        }, '*');
     },
 
     init() {
@@ -318,7 +318,7 @@ const UIManager = {
 const Raccoon = {
 
     status: null,
-    syncDelay: 1000,
+    syncDelay: 2000,
     timeoutid: null,
 
     async loadAddress() {

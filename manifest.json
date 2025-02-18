@@ -1,13 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Raccoon",
-  "version": "0.02",
+  "version": "0.02.1",
   "description": "Temporary email addresses",
   "permissions": [
     "activeTab"
   ],
   "host_permissions": [
-    "https://www.1secmail.com/*"
+    "https://www.mail.tm/*"
   ],
   "background": {
     "service_worker": "src/js/background.js"
