@@ -220,6 +220,47 @@ class MailWindow {
         this.windowContainer.querySelector('#closeButton')?.addEventListener('click', 
             () => this.windowContainer.remove());
     }
+
+    getBlockAssetsButtonHTML() {
+        return `
+            <button id="blockAssets" style="
+                all: unset;
+                font-size: 12px;
+                padding: 4px 12px;
+                border-radius: 6px;
+                cursor: pointer;
+                background: #fff;
+                border: 1px solid #c5c5c5;
+                color: #000000;
+                font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+                flex-shrink: 0;
+            ">Block Trackers: ${this.blockingEnabled ? 'ON' : 'OFF'}</button>
+        `;
+    }
+
+    getCloseButtonHTML() {
+        return `
+            <button id="closeButton" style="
+                background: none;
+                border: none;
+                padding: 6px;
+                cursor: pointer;
+                color: #666;
+                font-size: 14px;">
+                ✕
+            </button>
+        `;
+    }
+
+    toggleBlockingMode() {
+        this.blockingEnabled = !this.blockingEnabled;
+        this.updateContent();
+        const blockButton = this.windowContainer.querySelector('#blockAssets');
+        if (blockButton) {
+            // Just update the text content instead of replacing the whole button HTML
+            blockButton.textContent = `Block Trackers: ${this.blockingEnabled ? 'ON' : 'OFF'}`;
+        }
+    }
 }
 
 // Drag behavior handler
