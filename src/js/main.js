@@ -317,17 +317,14 @@ const UIManager = {
 
     initCloseButton() {
         const closeButton = document.getElementById('close');
-        if (!closeButton) {
-            console.error('Close button not found');
-            return;
+        if (closeButton) {
+            closeButton.addEventListener('click', () => {
+                window.parent.postMessage({
+                    action: 'toggleIframe',
+                    forceClose: true
+                }, '*');
+            });
         }
-        closeButton.addEventListener('click', () => {
-            // Send message to content script
-            window.parent.postMessage({
-                action: 'toggleIframe',
-                forceClose: true // Add this flag to force close
-            }, '*');
-        });
     },
 };
 

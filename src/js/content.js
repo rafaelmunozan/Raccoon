@@ -86,13 +86,13 @@ class IframeManager {
         return iframe;
     }
 
-    static toggle() {
+    static toggle(forceClose = false) {
         let iframe = document.getElementById('tempo-iframe') || this.create();
 
-        if (iframe.style.display === 'none' || iframe.style.display === '') {
-            this.show(iframe);
-        } else {
+        if (forceClose || iframe.style.display === 'block') {
             this.hide(iframe);
+        } else {
+            this.show(iframe);
         }
     }
 
@@ -108,11 +108,17 @@ class IframeManager {
     }
 
     static hide(iframe) {
+        if (!iframe) return;
+        
         iframe.style.opacity = '0';
         iframe.style.transform = 'scale(0.8)';
-        iframe.addEventListener('transitionend', () => {
+        
+        const handleTransitionEnd = () => {
             iframe.style.display = 'none';
-        }, { once: true });
+            iframe.removeEventListener('transitionend', handleTransitionEnd);
+        };
+        
+        iframe.addEventListener('transitionend', handleTransitionEnd);
         this.updateRetrievalLoop(0);
     }
 
@@ -333,11 +339,15 @@ window.addEventListener('message', (event) => {
     if (event.data.action === 'openMailWindow') {
         new MailWindow(event.data.content, event.data.subject);
     }
+    if (event.data.action === 'toggleIframe' && event.data.forceClose) {
+        console.log('Closing iframe...'); // Debug log
+        IframeManager.toggle(true); // Force close
+    }
 });
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "toggleIframe") {
-        IframeManager.toggle();
+        IframeManager.toggle(request.forceClose);
     }
     sendResponse();
 });
