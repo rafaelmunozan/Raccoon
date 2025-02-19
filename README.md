@@ -18,4 +18,5 @@ Raccoon is a browser tool that helps you protect your online privacy by generati
 For chromium-based browsers, you can download the extension here:
 - <a href="https://chromewebstore.google.com/detail/raccoon-temporary-disposa/ccdeeemajicjhdldloahdddilalegklp">Chrome Web Store</a>
 
+For Firefox-based browsers, use branch `firefox-0.02.1`. (Coming soon to [Firefox's Add-ons store](https://addons.mozilla.org/en-US/firefox/))
 
