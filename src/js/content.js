@@ -82,7 +82,7 @@ class IframeManager {
         iframe.id = 'tempo-iframe';
         iframe.style.cssText = STYLES.iframe;
         document.body.appendChild(iframe);
-        iframe.src = chrome.runtime.getURL('index.html');
+        iframe.src = browser.runtime.getURL('index.html');
         return iframe;
     }
 
@@ -117,7 +117,7 @@ class IframeManager {
     }
 
     static updateRetrievalLoop(interval) {
-        chrome.runtime.sendMessage({
+        browser.runtime.sendMessage({
             action: "updateRetrievalLoop",
             interval
         });
@@ -131,6 +131,7 @@ class MailWindow {
         this.subject = subject;
         this.blockingEnabled = true;
         this.hasHtml = /<[a-z][\s\S]*>/i.test(content);
+        this.blobUrl = null;
         this.init();
     }
 
@@ -191,25 +192,45 @@ class MailWindow {
         this.windowContainer.appendChild(contentContainer);
     }
 
-    setupContentHandling() {
-        this.updateContent();
-        if (this.hasHtml) {
-            const blockButton = this.windowContainer.querySelector('#blockAssets');
-            blockButton?.addEventListener('click', () => this.toggleBlockingMode());
+    createBlobUrl(content) {
+        // Revoke previous blob URL if exists
+        if (this.blobUrl) {
+            URL.revokeObjectURL(this.blobUrl);
         }
+
+        const htmlTemplate = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    body { 
+                        margin: 12px;
+                        font-family: -apple-system, system-ui, BlinkMacSystemFont, 
+                                    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                        ${!this.hasHtml ? 'white-space: pre-wrap; word-wrap: break-word; font-family: monospace;' : ''}
+                    }
+                </style>
+            </head>
+            <body>${content}</body>
+            </html>
+        `;
+
+        const blob = new Blob([htmlTemplate], { type: 'text/html' });
+        return URL.createObjectURL(blob);
     }
 
     updateContent() {
-        const doc = this.iframe.contentDocument;
-        doc.open();
-        if (this.hasHtml) {
-            doc.write(this.blockingEnabled ? 
-                Utils.sanitizeHtmlContent(this.content) : this.content);
-        } else {
-            doc.write(`<pre style="white-space: pre-wrap; word-wrap: break-word; margin: 0;">
-                ${this.content}</pre>`);
-        }
-        doc.close();
+        const contentToDisplay = this.hasHtml && this.blockingEnabled ? 
+            Utils.sanitizeHtmlContent(this.content) : 
+            this.content;
+
+        this.blobUrl = this.createBlobUrl(contentToDisplay);
+        this.iframe.src = this.blobUrl;
+    }
+
+    setupContentHandling() {
+        this.updateContent();
     }
 
     setupDragBehavior() {
@@ -217,8 +238,21 @@ class MailWindow {
     }
 
     setupEventListeners() {
-        this.windowContainer.querySelector('#closeButton')?.addEventListener('click', 
-            () => this.windowContainer.remove());
+        const closeButton = this.windowContainer.querySelector('#closeButton');
+        if (closeButton) {
+            closeButton.addEventListener('click', () => {
+                this.cleanup();
+                this.windowContainer.remove();
+            });
+        }
+
+        // Store the handler as a class property so we can reuse it
+        this.blockButtonHandler = () => this.toggleBlockingMode();
+        
+        const blockButton = this.windowContainer.querySelector('#blockAssets');
+        if (blockButton && this.hasHtml) {
+            blockButton.addEventListener('click', this.blockButtonHandler);
+        }
     }
 
     getBlockAssetsButtonHTML() {
@@ -254,11 +288,20 @@ class MailWindow {
 
     toggleBlockingMode() {
         this.blockingEnabled = !this.blockingEnabled;
-        this.updateContent();
         const blockButton = this.windowContainer.querySelector('#blockAssets');
         if (blockButton) {
-            // Just update the text content instead of replacing the whole button HTML
-            blockButton.textContent = `Block Trackers: ${this.blockingEnabled ? 'ON' : 'OFF'}`;
+            // Update the entire button HTML to maintain styles
+            blockButton.outerHTML = this.getBlockAssetsButtonHTML();
+            // Reattach event listener using the stored handler
+            this.windowContainer.querySelector('#blockAssets')
+                .addEventListener('click', this.blockButtonHandler);
+            this.updateContent();
+        }
+    }
+
+    cleanup() {
+        if (this.blobUrl) {
+            URL.revokeObjectURL(this.blobUrl);
         }
     }
 }
@@ -330,12 +373,15 @@ window.addEventListener('message', (event) => {
             iframe.style.height = `${event.data.height}px`;
         }
     }
+    if (event.data.action === 'toggleIframe') {
+        IframeManager.toggle(event.data.forceClose); // Pass through the forceClose flag
+    }
     if (event.data.action === 'openMailWindow') {
         new MailWindow(event.data.content, event.data.subject);
     }
 });
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "toggleIframe") {
         IframeManager.toggle();
     }

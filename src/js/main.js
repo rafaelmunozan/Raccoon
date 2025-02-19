@@ -354,10 +354,21 @@ const Raccoon = {
     },
 
     async restartAddress() {
-        await StorageManager.clean();
-        await StorageManager.create();
-        UIManager.cleanInbox();
-        Raccoon.loadAddress();
+        try {
+            await StorageManager.clean();
+            await StorageManager.create();
+            UIManager.cleanInbox();
+            await this.loadAddress();
+        } catch (error) {
+            console.error('Failed to restart address:', error);
+            // Add a small delay before retrying
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Retry once
+            await StorageManager.clean();
+            await StorageManager.create();
+            UIManager.cleanInbox();
+            await this.loadAddress();
+        }
     },
 
     createRestartEvent() {
@@ -372,28 +383,37 @@ const Raccoon = {
     },
 
     async checking() {
-
         try {
-
             const data = StorageManager.get();
 
-            if (!data || !data.token) return; // Ensure we have token
+            if (!data || !data.token) {
+                // If no data or token, generate new address
+                await this.restartAddress();
+                return;
+            }
 
             const mails = await MailService.getInbox(data.token);
 
-            if (!mails || mails.length < 1) return;
+            // If API call fails or returns invalid response, generate new address
+            if (!mails) {
+                await this.restartAddress();
+                return;
+            }
+
+            if (mails.length < 1) return;
 
             const storedMails = StorageManager.getInbox();
             const newMails = mails.filter(mail => !storedMails.hasOwnProperty(mail.id));
 
             for (let i = 0; i < newMails.length; i++) {
-                let mail = newMails[i]; // Basic message data from inbox
-                StorageManager.setMail(mail); // Store basic info
+                let mail = newMails[i];
+                StorageManager.setMail(mail);
                 UIManager.setCompMail(mail);
             }
 
         } catch (error) {
-            // console.error('Error:', error); // Keep error logging minimal for background sync
+            // If any error occurs during the process, generate new address
+            await this.restartAddress();
         }
     },
 
@@ -443,12 +463,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await Raccoon.init();
 
-    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (request.action === "updateRetrievalLoop") {
             Raccoon.syncDelay = request.interval;
             Raccoon.resetSync();
         }
-        sendResponse();
     });
 
     document.getElementById('generate').addEventListener('click', () => {

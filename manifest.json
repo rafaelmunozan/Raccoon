@@ -1,18 +1,16 @@
 {
-  "manifest_version": 3,
+  "manifest_version": 2,
   "name": "Raccoon",
   "version": "0.02.1",
   "description": "Temporary email addresses",
   "permissions": [
-    "activeTab"
-  ],
-  "host_permissions": [
+    "activeTab",
     "https://www.mail.tm/*"
   ],
   "background": {
-    "service_worker": "src/js/background.js"
+    "scripts": ["src/js/background.js"]
   },
-  "action": {
+  "browser_action": {
     "default_icon": {
       "16": "/src/img/icon/icon16.png",
       "48": "/src/img/icon/icon48.png",
@@ -31,9 +29,8 @@
     }
   ],
   "web_accessible_resources": [
-    {
-      "resources": ["index.html", "src/css/style.css", "src/js/main.js"],
-      "matches": ["<all_urls>"]
-    }
+    "index.html",
+    "src/css/style.css",
+    "src/js/main.js"
   ]
 }
